@@ -5,7 +5,7 @@ group "release" {
   targets = ["containers"]
 }
 group "local" {
-  targets = ["_local"]
+  targets = ["comfyui-local", "build-local-proxy"]
 }
 variable "DOCKER_REGISTRY" {
   default = "ghcr.io"
@@ -28,9 +28,19 @@ target "_common" {
   networks = ["host"]
   buildkit = true
 }
-target "_local" {
+target "build-local-proxy" {
   inherits = ["_common"]
-  target = "runtime"
+  target = "proxy-runtime"
+  tags = [
+    "local/${DOCKER_REPOSITORY}/comfyui-proxy:${DOCKER_TAG}",
+  ]
+  output = [
+    "type=docker,name=local/${DOCKER_REPOSITORY}/comfyui-proxy:${DOCKER_TAG}"
+  ]
+}
+target "comfyui-local" {
+  inherits = ["_common"]
+  target = "comfyui-runtime"
   tags = [
     "local/${DOCKER_REPOSITORY}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}",
   ]

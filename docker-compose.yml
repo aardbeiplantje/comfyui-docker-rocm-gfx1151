@@ -1,0 +1,165 @@
+services:
+  proxy:
+    image: ${DOCKER_REGISTRY:-local}/${DOCKER_REPOSITORY:-ai}/comfyui-proxy:latest
+    container_name: comfyui-proxy
+    init: true
+    restart: always
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=4k,mode=1700,uid=100
+      - /run:rw,noexec,nosuid,nodev,size=4k,mode=1700,uid=100
+      - /var/log/nginx:rw,noexec,nosuid,nodev,size=4k,mode=1700,uid=100
+      - /var/lib/nginx/logs:rw,noexec,nosuid,nodev,size=4k,mode=1700,uid=100
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+      - SYS_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 128m
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 100
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    healthcheck:
+      test: ["CMD", "curl", "-qsSLf", "https://comfyui.aardbeiplantje.link", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      dmz-ipv6:
+        ipv6_address: "${IPV6_ADDRESS}"
+      internal:
+        ipv4_address: "10.0.7.4"
+    volumes:
+      - cert-volume:/certs:ro
+    environment:
+      TZ: GMT
+      LC_ALL: C.UTF-8
+      LANG: en_US.UTF-8
+      PERL5LIB: ""
+
+  comfyui:
+    image: ${DOCKER_REGISTRY:-local}/${DOCKER_REPOSITORY:-ai}/comfyui-gfx1151:latest
+    container_name: comfyui
+    init: true
+    command: ["comfyui"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,suid,exec,size=2G
+      - /var/tmp:rw,suid,exec,size=2G
+      - /comfyui/.config/ComfyUI:exec,size=2G
+      - /run:rw,noexec,nosuid,nodev,size=4k,mode=1700,uid=0
+    group_add:
+      - video
+      - "992"
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      stack:
+        soft: 67108864
+        hard: 67108864
+    ipc: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CAP_CHOWN
+      - FOWNER
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=unconfined
+    networks:
+      internal:
+        ipv4_address: "10.0.7.3"
+    ports:
+      - "8188:8188"
+    volumes:
+      - hf-home:/hf:rw
+      - comfyui-user:/comfyui-user:rw
+      - comfyui-data:/comfyui-data:rw
+      - comfyui-nodes:/ComfyUI/custom_nodes:rw
+      - comfyui-workspace:/comfyui/workspace:rw
+      - ${ROCM_PATH:-/opt/rocm}:/opt/rocm:ro
+    environment:
+      HF_HOME: "/hf"
+      HF_TOKEN: "${HF_TOKEN}"
+      PYTHONUSERBASE: "/comfyui-user/.local"
+
+networks:
+  dmz-ipv6:
+    name: dmz-comfyui-ipv6
+    driver: bridge
+    enable_ipv6: true
+    enable_ipv4: false
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv6: "routed"
+      com.docker.network.bridge.name: "comfyui-dmz0"
+      com.docker.network.container_iface_prefix: "dmz"
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+      com.docker.network.bridge.enable_ip6_masquerade: "false"
+      com.docker.network.bridge.inhibit_ipv4: "true"
+      com.docker.network.driver.mtu: "1500"
+    ipam:
+      driver: default
+      config:
+        - subnet: "${IPV6_SUBNET}"
+          gateway: "${IPV6_GATEWAY}"
+  internal:
+    name: internal-comfyui
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      com.docker.network.bridge.name: "comfyui-int0"
+      com.docker.network.container_iface_prefix: "int"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.inhibit_ipv4: "false"
+      com.docker.network.bridge.gateway_mode_ipv4: "nat"
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.7.0/24
+          gateway: 10.0.7.1
+
+volumes:
+  cert-volume:
+    name: "${CERT_VOLUME:-certs-comfyui}"
+  hf-home:
+    name: "comfyui-hf-home"
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${HF_HOME:-hf}"
+  comfyui-nodes:
+    name: "comfyui-hf-nodes"
+  comfyui-user:
+    name: "comfyui-hf-user"
+  comfyui-data:
+    name: "comfyui-hf-data"
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${MODELS_DIR:-hf-data}"
+  comfyui-workspace:
+    name: "comfyui-workspace-${LOGNAME}"
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${WORKSPACE:-comfyui-workspace-$LOGNAME}"

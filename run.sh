@@ -9,27 +9,25 @@ export MODELS_DIR HF_TOKEN
 exec docker run \
     --rm \
     -i \
-    -u comfyui \
     --name $D \
     --network=host \
     --ulimit memlock=-1:-1 \
     --ulimit stack=67108864:67108864 \
     --group-add=video \
+    --group-add=992 \
     --ipc=host \
     --cap-add=SYS_PTRACE \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \
-    --group-add=109 \
-    --group-add=986 \
-    --group-add=992 \
     --device /dev/kfd \
     --device /dev/dri \
     --tmpfs /tmp:rw,suid,exec,size=1G \
     --tmpfs /var/tmp:rw,suid,exec,size=1G \
-    $([ -n "$MODELS_DIR" ] && echo "-v $MODELS_DIR:/models:rw") \
-    $([ -n "$MODELS_DIR" ] && echo "-e MODELS_DIR") \
+    --tmpfs /comfyui/.config/ComfyUI:exec,size=512M \
     $([ -n "$HF_HOME"    ] && echo "-v $HF_HOME:/hf:rw") \
-    -e XDG_CACHE_HOME=${XDG_CACHE_HOME:-/dev/shm} \
+    -v ${MODELS_DIR:-comfyui-data-$LOGNAME}:/comfyui-data:rw \
+    -v ${WORKSPACE:-comfyui-workspace-$LOGNAME}:/comfyui/workspace:rw \
+    -v ${ROCM_PATH:-/opt/rocm}:/opt/rocm:ro \
     -e HF_HOME=${HF_HOME:-/hf} \
     -e HF_TOKEN \
     -e HF_HUB_CACHE=${HF_HUB_CACHE:-/hf/hub} \
