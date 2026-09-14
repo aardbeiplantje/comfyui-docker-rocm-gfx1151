@@ -1,0 +1,15 @@
+**/*~
+**/.*~
+.git
+LICENSE
+README.md
+Dockerfile
+docker-bake.hcl
+
+.tmp/
+# Python build artifacts
+**/__pycache__/
+**/*.egg-info/
+**/*.egg
+**/*.pyc
+**/*.log
