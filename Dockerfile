@@ -59,7 +59,6 @@ RUN --mount=type=cache,target=/var/cache/apt \
       python3-venv \
       python3-dev \
       python3-minimal \
-      python3-requests \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -77,6 +76,7 @@ RUN \
         torch \
         torchvision \
         torchaudio \
+        torchsde \
         "jax_rocm7_plugin==0.9.1+rocm7.13.0" \
         "jax_rocm7_pjrt==0.9.1+rocm7.13.0" \
         "triton==3.6.0+rocm7.13.0" \
@@ -111,12 +111,14 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && apt-get install -y --no-install-recommends \
        git \
        iproute2
+RUN echo "flash_attn" > constraints.txt
 RUN \
     --mount=target=/cache,type=cache,uid=0 \
     XDG_CACHE_HOME=/cache \
     python3 -m pip install --prefer-binary --upgrade \
+        --constraint constraints.txt \
         comfy-cli \
-        comfy_aimdo \
+        'comfy_aimdo>=0.5.5' \
         comfy-script \
         nest-asyncio2 \
         gradio \
@@ -143,26 +145,31 @@ RUN \
         filelock \
         'av>=17.0.0' \
         comfy-kitchen==0.2.33 \
-        comfy-aimdo==0.5.3 \
         requests \
         'simpleeval>=1.0.0' \
         blake3 \
         'kornia>=0.7.1' \
-        spandrel \
+        'spandrel' \
         pydantic~=2.0 \
         pydantic-settings~=2.0 \
         'PyOpenGL>=3.1.8' \
-        comfy-angle
+        comfy-angle \
+        PyOpenGL-accelerate
+
+ENV PYTHONPATH=/usr/local/lib/python3.13/dist-packages
+RUN python3 -c "import comfy_aimdo.storage"
 
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
        apt-get remove python3-requests -y \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-       gcc \
-       g++ \
-       cmake \
-       make
+        libgl1 \
+        libglib2.0-0 \
+        gcc \
+        g++ \
+        cmake \
+        make
 
 RUN git clone --depth=1 https://github.com/comfyanonymous/ComfyUI /ComfyUI
 ENV HDIR=/$LOGNAME
@@ -175,14 +182,14 @@ RUN cp -a /ComfyUI/custom_nodes / \
     && mkdir -p /ComfyUI/custom_nodes \
     && chown comfyui:comfyui /ComfyUI/custom_nodes
 RUN cp /ComfyUI/requirements.txt / && sed -i '/torch/s/^/#/' requirements.txt
-RUN chown -R comfyui:comfyui /ComfyUI
 RUN \
     --mount=target=/cache,type=cache,uid=0 \
     XDG_CACHE_HOME=/cache \
     python3 -m pip install --prefer-binary --upgrade \
-        torchsde \
-        PyOpenGL-accelerate \
-        -r /requirements.txt
+        -r requirements.txt
+ENV PYTHONPATH=/usr/local/lib/python3.13/dist-packages
+RUN python3 -c "import comfy_aimdo.storage"
+RUN chown -R comfyui:comfyui /ComfyUI
 RUN getent group video || groupadd -g 44 video && \
     getent group render || groupadd -g 992 render || true && \
     usermod -aG video,render comfyui || true
