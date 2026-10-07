@@ -68,8 +68,4 @@ fi
 export DOCKER_REGISTRY=local
 export DOCKER_REPOSITORY=ai
 
-echo "building images with buildx bake"
-docker buildx bake -f docker-bake.hcl local || exit $?
-
-echo "starting with docker compose"
 exec docker compose up -d
