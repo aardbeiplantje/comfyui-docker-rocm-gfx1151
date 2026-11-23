@@ -83,6 +83,7 @@ services:
       - no-new-privileges:true
       - seccomp=unconfined
     networks:
+      dmz-ipv6:
       internal:
         ipv4_address: "10.0.7.3"
     ports:
