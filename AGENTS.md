@@ -72,6 +72,10 @@ The file `comfyui.yml` is copied into the image as `$HDIR/.comfyui.yml` and load
 └── comfyui.yml         # Model path config (baked into image as .comfyui.yml)
 ```
 
+## Git workflow
+
+- Do **not** create or use branches unless the user explicitly asks for one. Commit directly on `main` and push to `origin main`.
+
 ## Gotchas
 
 - **No tests or lint** — this is a deployment-only repo. Verification means building the image and running it.
