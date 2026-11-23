@@ -72,4 +72,4 @@ echo "building images with buildx bake"
 docker buildx bake --pull -f docker-bake.hcl local || exit $?
 
 echo "starting with docker compose"
-exec docker compose up -d
+exec docker compose up -d --build --force-recreate
