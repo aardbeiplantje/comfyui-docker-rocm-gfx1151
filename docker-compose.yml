@@ -99,6 +99,7 @@ services:
       HF_HOME: "/hf"
       HF_TOKEN: "${HF_TOKEN}"
       PYTHONUSERBASE: "/comfyui-user/.local"
+      ROCM_INFERENCE_URL: "http://[2a02:a03f:8789:e700::20]:8000/rocm"
 
 networks:
   dmz-ipv6:
